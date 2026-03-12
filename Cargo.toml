@@ -4,5 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-sha2 = "0.10" # Para o cálculo do SHA-256
-rand = "0.8"  # Para gerar as strings aleatórias
+sha2 = "0.10"
+rand = "0.8"
+dashmap = "5.5"
+num_cpus = "1.16"
