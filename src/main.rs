@@ -1,13 +1,14 @@
-use dashmap::DashMap;
+use dashmap::DashMap; // Tabela Hash thread-safe (concorrente)
 use rand::distributions::Alphanumeric;
-use rand::{Rng, thread_rng};
-use sha2::{Digest, Sha256};
-use std::mem;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::thread;
-use std::time::Instant;
+use rand::{Rng, thread_rng}; // Geração de números/strings aleatórias
+use sha2::{Digest, Sha256}; // Crate para criptografia SHA-256
+use std::mem; // Verificação de tamanho de tipos na memória
+use std::sync::Arc; // Ponteiro de referência compartilhada entre threads
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering}; // Sincronização atômica
+use std::thread; // Gerenciamento de Threads
+use std::time::Instant; // Medição de tempo de execução
 
+/// Gera uma string aleatória de caracteres alfanuméricos
 fn gerar_string_aleatoria(tamanho: usize) -> String {
     thread_rng()
         .sample_iter(&Alphanumeric)
@@ -29,12 +30,15 @@ fn buscar_colisao_concorrente(bits: usize) {
     let tentativas_totais = Arc::new(AtomicU64::new(0));
     let encontrou_colisao = Arc::new(AtomicBool::new(false));
 
-    let num_threads = num_cpus::get(); // Descobre quantos núcleos lógicos sua CPU possui
+    // Detecta quantos núcleos (threads lógicas) o computador possui
+    let num_threads = num_cpus::get();
     println!("Iniciando {} threads trabalhadoras...", num_threads);
 
+    // Vetor de pares
     let mut handles = vec![];
 
     for _ in 0..num_threads {
+        // Clona os ponteiros (Arc) para cada thread
         let mapa_clone = Arc::clone(&mapa_hashes);
         let tentativas_clone = Arc::clone(&tentativas_totais);
         let encontrou_clone = Arc::clone(&encontrou_colisao);
@@ -43,16 +47,17 @@ fn buscar_colisao_concorrente(bits: usize) {
             // O processo para assim que o algoritmo encontrar duas strings diferentes com o mesmo Mini-Hash
             // A thread verifica constantemente se alguma outra thread já achou a colisão
             while !encontrou_clone.load(Ordering::Relaxed) {
-                // Registra o número total de tentativas [cite: 27]
+                // Incrementa o contador global de tentativas
                 tentativas_clone.fetch_add(1, Ordering::Relaxed);
 
                 let entrada = gerar_string_aleatoria(16);
 
+                // Processo de Hashing
                 let mut hasher = Sha256::new();
                 hasher.update(entrada.as_bytes());
                 let hash_completo = hasher.finalize();
 
-                // O algoritmo deve extrair apenas os primeiros N bits (32 e 64 bits) [cite: 23]
+                // Truncamento: Extrai apenas os bits necessários (32 ou 64)
                 let mini_hash: u64 = if bits == 32 {
                     let mut bytes = [0u8; 4];
                     bytes.copy_from_slice(&hash_completo[0..4]);
@@ -65,19 +70,20 @@ fn buscar_colisao_concorrente(bits: usize) {
                     panic!("Tamanho de bits não suportado.");
                 };
 
-                // O DashMap retorna o valor antigo se a chave já existia.
-                // Se isso acontecer, achamos nossa colisão!
+                // Tenta inserir no mapa. Se o 'insert' retornar algo, é porque a chave já existia. (Some)
                 if let Some(entrada_anterior) = mapa_clone.insert(mini_hash, entrada.clone()) {
+                    // Verifica se não é a mesma string (improvável, mas boa prática)
                     if entrada_anterior != entrada {
                         // Sinaliza para todas as outras threads pararem
                         encontrou_clone.store(true, Ordering::Relaxed);
 
-                        let tempo_total = tempo_inicio.elapsed(); // Registra o tempo total de execução [cite: 28]
+                        let tempo_total = tempo_inicio.elapsed(); // Registra o tempo total de execução
 
-                        // Calcula a quantidade de memória RAM utilizada (aproximada) [cite: 29]
+                        // Calcula a quantidade de memória RAM utilizada (aproximada)
+                        // Multiplicamos pela capacidade atual do DashMap
+                        // (tamanho u64 + tamanho String) * capacidade alocada
                         let tamanho_chave = mem::size_of::<u64>();
                         let tamanho_valor = mem::size_of::<String>() + 16;
-                        // Multiplicamos pela capacidade atual do DashMap
                         let memoria_estimada_bytes =
                             (tamanho_chave + tamanho_valor) * mapa_clone.capacity();
                         let memoria_estimada_mb = memoria_estimada_bytes as f64 / (1024.0 * 1024.0);
