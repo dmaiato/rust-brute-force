@@ -1,0 +1,1321 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Colisão SHA-256 – Apresentação</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bebas+Neue&family=Barlow:wght@300;400;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #0b0e13;
+        --panel: #111620;
+        --border: #1e2d40;
+        --accent1: #00e5ff;
+        --accent2: #ff6b35;
+        --green: #39ff14;
+        --muted: #4a6080;
+        --text: #cdd8e8;
+        --white: #f0f6ff;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Barlow", sans-serif;
+        min-height: 100vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* ── HEADER ── */
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 32px;
+        border-bottom: 1px solid var(--border);
+        background: rgba(11, 14, 19, 0.9);
+        backdrop-filter: blur(6px);
+        z-index: 10;
+      }
+      .logo {
+        font-family: "Bebas Neue", sans-serif;
+        font-size: 1.5rem;
+        letter-spacing: 0.12em;
+        color: var(--accent1);
+      }
+      .logo span {
+        color: var(--accent2);
+      }
+      .slide-counter {
+        font-family: "Share Tech Mono", monospace;
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+      .slide-counter b {
+        color: var(--accent1);
+      }
+
+      /* ── PRESENTER BADGE ── */
+      .presenter-badge {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        padding: 4px 14px 4px 10px;
+        border-radius: 999px;
+        border: 1px solid;
+        transition: all 0.3s;
+      }
+      .badge-p1 {
+        color: var(--accent1);
+        border-color: var(--accent1);
+        background: rgba(0, 229, 255, 0.08);
+      }
+      .badge-p2 {
+        color: var(--accent2);
+        border-color: var(--accent2);
+        background: rgba(255, 107, 53, 0.08);
+      }
+      .badge-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        animation: pulse 1.4s infinite;
+      }
+      .badge-p1 .badge-dot {
+        background: var(--accent1);
+      }
+      .badge-p2 .badge-dot {
+        background: var(--accent2);
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        50% {
+          opacity: 0.4;
+          transform: scale(0.7);
+        }
+      }
+
+      /* ── STAGE ── */
+      #stage {
+        flex: 1;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .slide {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 40px 52px;
+        opacity: 0;
+        pointer-events: none;
+        transform: translateX(60px);
+        transition:
+          opacity 0.4s ease,
+          transform 0.4s ease;
+      }
+      .slide.active {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateX(0);
+      }
+      .slide.exit {
+        opacity: 0;
+        transform: translateX(-60px);
+      }
+
+      /* ── SLIDE TYPES ── */
+      .slide-title {
+        text-align: center;
+        justify-content: center;
+        align-items: center;
+        gap: 20px;
+      }
+
+      .big-title {
+        font-family: "Bebas Neue", sans-serif;
+        font-size: clamp(3rem, 7vw, 5.5rem);
+        line-height: 1;
+        letter-spacing: 0.04em;
+        color: var(--white);
+      }
+      .big-title .hl {
+        color: var(--accent1);
+      }
+      .subtitle-text {
+        font-size: 1.1rem;
+        font-weight: 300;
+        color: var(--muted);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      /* ── TWO-COL LAYOUT ── */
+      .two-col {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 32px;
+        align-items: start;
+      }
+      .content-block h2 {
+        font-family: "Bebas Neue", sans-serif;
+        font-size: 1.8rem;
+        letter-spacing: 0.07em;
+        margin-bottom: 16px;
+      }
+      .content-block p,
+      .content-block li {
+        font-size: 0.95rem;
+        line-height: 1.7;
+        color: var(--text);
+      }
+      .content-block ul {
+        padding-left: 18px;
+      }
+      .content-block li {
+        margin-bottom: 8px;
+      }
+      .content-block li strong {
+        color: var(--accent1);
+      }
+
+      /* ── CODE PANEL ── */
+      .code-panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        overflow: hidden;
+        font-family: "Share Tech Mono", monospace;
+        font-size: 0.78rem;
+        line-height: 1.6;
+      }
+      .code-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 16px;
+        background: rgba(30, 45, 64, 0.5);
+        border-bottom: 1px solid var(--border);
+      }
+      .dot {
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+      }
+      .dot-r {
+        background: #ff5f57;
+      }
+      .dot-y {
+        background: #febc2e;
+      }
+      .dot-g {
+        background: #28c840;
+      }
+      .code-filename {
+        color: var(--muted);
+        font-size: 0.75rem;
+        margin-left: 6px;
+      }
+      .code-body {
+        padding: 16px 20px;
+        overflow-x: auto;
+        max-height: 340px;
+        overflow-y: auto;
+      }
+      .code-body::-webkit-scrollbar {
+        width: 5px;
+        height: 5px;
+      }
+      .code-body::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .code-body::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 3px;
+      }
+
+      /* Syntax tokens */
+      .kw {
+        color: #7ea9e1;
+      }
+      .ty {
+        color: #5cc8b0;
+      }
+      .fn {
+        color: #dba35a;
+      }
+      .cm {
+        color: #4a6080;
+        font-style: italic;
+      }
+      .st {
+        color: #98c379;
+      }
+      .nm {
+        color: #e06c75;
+      }
+      .op {
+        color: var(--accent1);
+      }
+      .hl-line {
+        background: rgba(0, 229, 255, 0.06);
+        display: block;
+        border-left: 2px solid var(--accent1);
+        padding-left: 6px;
+        margin-left: -6px;
+      }
+
+      /* ── DIAGRAM ── */
+      .diagram {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .diag-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .diag-box {
+        flex: 1;
+        background: rgba(0, 229, 255, 0.07);
+        border: 1px solid rgba(0, 229, 255, 0.3);
+        border-radius: 6px;
+        padding: 8px 14px;
+        font-family: "Share Tech Mono", monospace;
+        font-size: 0.8rem;
+        text-align: center;
+        color: var(--accent1);
+      }
+      .diag-box.orange {
+        background: rgba(255, 107, 53, 0.07);
+        border-color: rgba(255, 107, 53, 0.3);
+        color: var(--accent2);
+      }
+      .diag-box.green {
+        background: rgba(57, 255, 20, 0.07);
+        border-color: rgba(57, 255, 20, 0.3);
+        color: var(--green);
+      }
+      .diag-arrow {
+        color: var(--muted);
+        font-size: 1.1rem;
+      }
+
+      /* ── METRIC CARDS ── */
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        margin-top: 20px;
+      }
+      .metric-card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 18px 20px;
+        text-align: center;
+      }
+      .metric-val {
+        font-family: "Bebas Neue", sans-serif;
+        font-size: 2rem;
+        color: var(--accent1);
+      }
+      .metric-val.orange {
+        color: var(--accent2);
+      }
+      .metric-label {
+        font-size: 0.75rem;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-top: 4px;
+      }
+
+      /* ── FORMULA BOX ── */
+      .formula-box {
+        background: var(--panel);
+        border-left: 3px solid var(--accent1);
+        border-radius: 0 8px 8px 0;
+        padding: 16px 20px;
+        font-family: "Share Tech Mono", monospace;
+        font-size: 0.95rem;
+        color: var(--accent1);
+        margin: 14px 0;
+      }
+      .formula-box .comment {
+        color: var(--muted);
+        font-size: 0.8rem;
+        display: block;
+        margin-top: 6px;
+      }
+
+      /* ── TIMELINE ── */
+      .timeline {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+      }
+      .tl-item {
+        display: flex;
+        gap: 16px;
+        align-items: flex-start;
+        padding: 10px 0;
+        border-left: 2px solid var(--border);
+        padding-left: 20px;
+        position: relative;
+      }
+      .tl-item::before {
+        content: "";
+        position: absolute;
+        left: -6px;
+        top: 15px;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--accent1);
+        border: 2px solid var(--bg);
+      }
+      .tl-item.orange::before {
+        background: var(--accent2);
+      }
+      .tl-num {
+        font-family: "Share Tech Mono", monospace;
+        color: var(--muted);
+        font-size: 0.75rem;
+        min-width: 20px;
+        margin-top: 2px;
+      }
+      .tl-content strong {
+        color: var(--white);
+        font-size: 0.9rem;
+      }
+      .tl-content p {
+        font-size: 0.82rem;
+        color: var(--muted);
+        margin-top: 2px;
+      }
+
+      /* ── SECTION DIVIDER ── */
+      .section-tag {
+        font-family: "Share Tech Mono", monospace;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.15em;
+        color: var(--muted);
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .section-tag::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: var(--border);
+      }
+
+      /* ── FULL SLIDE CONTENT ── */
+      .slide-full {
+        flex-direction: column;
+        justify-content: flex-start;
+        padding-top: 50px;
+      }
+
+      /* ── NAV ── */
+      nav {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 20px;
+        padding: 14px;
+        border-top: 1px solid var(--border);
+        background: rgba(11, 14, 19, 0.9);
+      }
+      .nav-btn {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        color: var(--text);
+        font-family: "Share Tech Mono", monospace;
+        font-size: 0.8rem;
+        padding: 8px 22px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s;
+        letter-spacing: 0.05em;
+      }
+      .nav-btn:hover {
+        border-color: var(--accent1);
+        color: var(--accent1);
+      }
+      .nav-btn:disabled {
+        opacity: 0.3;
+        cursor: default;
+      }
+
+      .progress-bar {
+        display: flex;
+        gap: 5px;
+        align-items: center;
+      }
+      .prog-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--border);
+        transition: all 0.3s;
+        cursor: pointer;
+      }
+      .prog-dot.done {
+        background: var(--muted);
+      }
+      .prog-dot.active {
+        background: var(--accent1);
+        transform: scale(1.4);
+      }
+
+      /* ── DECORATIVE BG ── */
+      .bg-grid {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+        background-image:
+          linear-gradient(rgba(0, 229, 255, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(0, 229, 255, 0.03) 1px, transparent 1px);
+        background-size: 40px 40px;
+      }
+
+      #stage,
+      header,
+      nav {
+        position: relative;
+        z-index: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bg-grid"></div>
+
+    <header>
+      <div class="logo">Hash<span>Colisão</span> · Rust</div>
+      <div id="presenterBadge" class="presenter-badge badge-p1">
+        <span class="badge-dot"></span>
+        <span id="presenterName">Pessoa 1</span>
+      </div>
+      <div class="slide-counter">
+        SLIDE <b id="slideNum">1</b> / <b id="slideTotal">8</b>
+      </div>
+    </header>
+
+    <div id="stage">
+      <!-- SLIDE 1 – Capa -->
+      <div class="slide slide-title active" data-presenter="1">
+        <div class="section-tag">Introdução</div>
+        <div class="big-title">
+          Busca de <span class="hl">Colisão</span><br />em SHA-256
+        </div>
+        <div style="height: 16px"></div>
+        <div class="subtitle-text">
+          Implementação em Rust · Paradoxo do Aniversário · Análise de
+          Desempenho
+        </div>
+        <div style="height: 32px"></div>
+        <div style="display: flex; gap: 24px; justify-content: center">
+          <div style="text-align: center">
+            <div
+              style="
+                font-family: &quot;Share Tech Mono&quot;, monospace;
+                color: var(--accent1);
+                font-size: 1.6rem;
+              "
+            >
+              P1
+            </div>
+            <div style="font-size: 0.8rem; color: var(--muted)">
+              Estruturas & Setup
+            </div>
+          </div>
+          <div
+            style="color: var(--border); font-size: 2rem; align-self: center"
+          >
+            ·
+          </div>
+          <div style="text-align: center">
+            <div
+              style="
+                font-family: &quot;Share Tech Mono&quot;, monospace;
+                color: var(--accent2);
+                font-size: 1.6rem;
+              "
+            >
+              P2
+            </div>
+            <div style="font-size: 0.8rem; color: var(--muted)">
+              Algoritmo & Resultados
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 2 – Contexto -->
+      <div class="slide" data-presenter="1">
+        <div class="section-tag">Pessoa 1 · Contexto</div>
+        <div class="two-col">
+          <div class="content-block">
+            <h2 style="color: var(--accent1)">O que é SHA-256?</h2>
+            <p>
+              Função hash criptográfica que transforma qualquer entrada em uma
+              saída de <strong>256 bits</strong> (32 bytes) de tamanho fixo.
+            </p>
+            <div style="height: 14px"></div>
+            <p>Propriedades fundamentais:</p>
+            <ul style="margin-top: 8px">
+              <li>
+                <strong>Determinismo</strong> — mesma entrada, sempre mesmo hash
+              </li>
+              <li>
+                <strong>Efeito avalanche</strong> — 1 bit muda → hash totalmente
+                diferente
+              </li>
+              <li>
+                <strong>Resistência a colisão</strong> — computacionalmente
+                inviável encontrar dois inputs com o mesmo hash
+              </li>
+            </ul>
+          </div>
+          <div>
+            <div class="diagram">
+              <div class="diag-row">
+                <div class="diag-box">"hello"</div>
+                <div class="diag-arrow">→</div>
+                <div class="diag-box orange">SHA-256</div>
+                <div class="diag-arrow">→</div>
+                <div class="diag-box" style="font-size: 0.65rem">
+                  2cf24dba5f...
+                </div>
+              </div>
+              <div class="diag-row">
+                <div class="diag-box">"hellp"</div>
+                <div class="diag-arrow">→</div>
+                <div class="diag-box orange">SHA-256</div>
+                <div class="diag-arrow">→</div>
+                <div class="diag-box" style="font-size: 0.65rem">
+                  4d7a9fe5c0...
+                </div>
+              </div>
+            </div>
+            <div class="formula-box" style="margin-top: 16px">
+              colisão: H(A) = H(B), A ≠ B
+              <span class="comment">// dois inputs diferentes, mesmo hash</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 3 – Estruturas de dados -->
+      <div class="slide" data-presenter="1">
+        <div class="section-tag">Pessoa 1 · Estruturas de Dados</div>
+        <div class="two-col" style="align-items: start">
+          <div class="content-block">
+            <h2 style="color: var(--accent1)">ColisaoResult</h2>
+            <p>
+              Struct que encapsula <strong>todo o estado</strong> de uma colisão
+              encontrada: métricas de desempenho, memória e as strings
+              colidentes.
+            </p>
+            <div style="height: 12px"></div>
+            <div class="timeline">
+              <div class="tl-item">
+                <div class="tl-content">
+                  <strong>bits / attempts</strong>
+                  <p>Dificuldade e custo computacional</p>
+                </div>
+              </div>
+              <div class="tl-item">
+                <div class="tl-content">
+                  <strong>duration</strong>
+                  <p>Tempo real de execução</p>
+                </div>
+              </div>
+              <div class="tl-item">
+                <div class="tl-content">
+                  <strong>initial/final_memory</strong>
+                  <p>RSS do processo (via memory_stats)</p>
+                </div>
+              </div>
+              <div class="tl-item">
+                <div class="tl-content">
+                  <strong>string1, string2, hash1, hash2</strong>
+                  <p>As evidências da colisão</p>
+                </div>
+              </div>
+              <div class="tl-item">
+                <div class="tl-content">
+                  <strong>mini_hash</strong>
+                  <p>Fatia de N bits que colidiu</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="code-panel">
+            <div class="code-header">
+              <span class="dot dot-r"></span><span class="dot dot-y"></span
+              ><span class="dot dot-g"></span>
+              <span class="code-filename">main.rs · struct</span>
+            </div>
+            <div class="code-body">
+              <pre><span class="kw">struct</span> <span class="ty">ColisaoResult</span> {
+  bits:           <span class="ty">usize</span>,
+  attempts:       <span class="ty">u64</span>,
+  duration:       <span class="ty">Duration</span>,
+  initial_memory: <span class="ty">u64</span>,
+  final_memory:   <span class="ty">u64</span>,
+  string1:        <span class="ty">String</span>,
+  string2:        <span class="ty">String</span>,
+  hash1:          <span class="ty">String</span>,
+  hash2:          <span class="ty">String</span>,
+  mini_hash:      <span class="ty">u64</span>,
+}
+
+<span class="cm">// Lê RSS do processo de forma</span>
+<span class="cm">// portável (Linux/macOS/Windows)</span>
+<span class="kw">fn</span> <span class="fn">get_allocated_memory</span>() -> <span class="ty">u64</span> {
+  <span class="kw">if let</span> <span class="ty">Some</span>(usage) =
+      <span class="fn">memory_stats</span>() {
+    usage.physical_mem <span class="kw">as</span> <span class="ty">u64</span>
+  } <span class="kw">else</span> { <span class="nm">0</span> }
+}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 4 – Paradoxo do Aniversário -->
+      <div class="slide" data-presenter="1">
+        <div class="section-tag">Pessoa 1 · Teoria</div>
+        <div class="two-col" style="align-items: start">
+          <div class="content-block">
+            <h2 style="color: var(--accent1)">Paradoxo do Aniversário</h2>
+            <p>
+              A intuição por trás da busca por colisão. Com espaço de
+              <em>N</em> valores possíveis, precisamos de apenas
+              <strong>~√N tentativas</strong> para ter 50% de chance de colisão.
+            </p>
+            <div class="formula-box">
+              E[tentativas] ≈ √(π · 2^N / 2)
+              <span class="comment">// N = número de bits da fatia</span>
+            </div>
+            <p style="margin-top: 12px">Para N bits:</p>
+          </div>
+          <div>
+            <div class="metrics">
+              <div class="metric-card">
+                <div class="metric-val">16</div>
+                <div class="metric-label">bits</div>
+                <div
+                  style="
+                    color: var(--green);
+                    font-size: 0.75rem;
+                    margin-top: 6px;
+                  "
+                >
+                  ~300 tent.
+                </div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-val">32</div>
+                <div class="metric-label">bits</div>
+                <div
+                  style="
+                    color: var(--accent1);
+                    font-size: 0.75rem;
+                    margin-top: 6px;
+                  "
+                >
+                  ~77k tent.
+                </div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-val orange">48</div>
+                <div class="metric-label">bits</div>
+                <div
+                  style="
+                    color: var(--accent2);
+                    font-size: 0.75rem;
+                    margin-top: 6px;
+                  "
+                >
+                  ~20M tent.
+                </div>
+              </div>
+            </div>
+            <div
+              style="
+                margin-top: 20px;
+                background: var(--panel);
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                padding: 18px;
+              "
+            >
+              <div class="section-tag" style="margin-bottom: 10px">
+                Estratégia usada
+              </div>
+              <div
+                style="
+                  font-family: &quot;Share Tech Mono&quot;, monospace;
+                  font-size: 0.78rem;
+                  line-height: 1.8;
+                  color: var(--text);
+                "
+              >
+                HashMap&lt;u64, String&gt;<br />
+                <span style="color: var(--muted)"
+                  >chave → mini-hash (N bits)</span
+                ><br />
+                <span style="color: var(--muted)">valor → string que gerou</span
+                ><br />
+                <span style="color: var(--muted)"
+                  >colisão → chave já existe!</span
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 5 – Algoritmo principal (P2) -->
+      <div class="slide" data-presenter="2">
+        <div class="section-tag">Pessoa 2 · Algoritmo Central</div>
+        <div class="two-col" style="align-items: start">
+          <div>
+            <div class="content-block">
+              <h2 style="color: var(--accent2)">buscar_colisao()</h2>
+              <p>
+                Loop infinito com <strong>4 etapas</strong> por iteração até
+                encontrar colisão:
+              </p>
+            </div>
+            <div style="height: 14px"></div>
+            <div class="timeline">
+              <div class="tl-item">
+                <div class="tl-content">
+                  <strong>① Geração</strong>
+                  <p>
+                    16 bytes aleatórios via getrandom → hex string de 32 chars
+                  </p>
+                </div>
+              </div>
+              <div class="tl-item orange">
+                <div class="tl-content">
+                  <strong>② Hash</strong>
+                  <p>SHA-256 da entrada com sha2::Sha256</p>
+                </div>
+              </div>
+              <div class="tl-item orange">
+                <div class="tl-content">
+                  <strong>③ Extração do Mini-Hash</strong>
+                  <p>
+                    Pega os primeiros 8 bytes → u64 → shift direito para isolar
+                    N bits
+                  </p>
+                </div>
+              </div>
+              <div class="tl-item">
+                <div class="tl-content">
+                  <strong>④ Verificação</strong>
+                  <p>
+                    HashMap.get() → colisão se chave existe e strings diferem
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="code-panel">
+            <div class="code-header">
+              <span class="dot dot-r"></span><span class="dot dot-y"></span
+              ><span class="dot dot-g"></span>
+              <span class="code-filename">main.rs · buscar_colisao</span>
+            </div>
+            <div class="code-body">
+              <pre><span class="kw">loop</span> {
+  tentativas += <span class="nm">1</span>;
+
+  <span class="cm">// ① gera 16 bytes aleatórios</span>
+  <span class="kw">let mut</span> buf = [<span class="nm">0u8</span>; <span class="nm">16</span>];
+  <span class="fn">getrandom</span>(&<span class="kw">mut</span> buf)
+    .expect(<span class="st">"falha rng"</span>);
+  <span class="kw">let</span> entrada = <span class="fn">hex::encode</span>(buf);
+
+  <span class="cm">// ② SHA-256</span>
+  <span class="kw">let mut</span> hasher = <span class="ty">Sha256</span>::<span class="fn">new</span>();
+  hasher.<span class="fn">update</span>(entrada.<span class="fn">as_bytes</span>());
+  <span class="kw">let</span> hash = hasher.<span class="fn">finalize</span>();
+
+  <span class="cm">// ③ extrai N bits do início</span>
+  <span class="hl-line">  <span class="kw">let mut</span> tmp = [<span class="nm">0u8</span>; <span class="nm">8</span>];</span>
+  <span class="hl-line">  tmp.<span class="fn">copy_from_slice</span>(&hash[..<span class="nm">8</span>]);</span>
+  <span class="hl-line">  <span class="kw">let</span> mini = <span class="ty">u64</span>::<span class="fn">from_be_bytes</span>(tmp)</span>
+  <span class="hl-line">               >> (<span class="nm">64</span> - bits);</span>
+
+  <span class="cm">// ④ verifica colisão</span>
+  <span class="kw">if let</span> <span class="ty">Some</span>(ant) = hashes.<span class="fn">get</span>(&mini) {
+    <span class="kw">if</span> ant != &entrada {
+      <span class="cm">/* COLISÃO! */</span>  <span class="kw">return</span>;
+    }
+  }
+  hashes.<span class="fn">insert</span>(mini, entrada);
+}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 6 – Extração dos bits (P2) -->
+      <div class="slide" data-presenter="2">
+        <div class="section-tag">Pessoa 2 · Detalhe Técnico</div>
+        <div class="two-col" style="align-items: start">
+          <div class="content-block">
+            <h2 style="color: var(--accent2)">Extração do Mini-Hash</h2>
+            <p>
+              O truque de bit manipulation para isolar os primeiros
+              <strong>N bits</strong> de um hash SHA-256:
+            </p>
+            <div
+              class="formula-box"
+              style="
+                margin-top: 14px;
+                border-color: var(--accent2);
+                color: var(--accent2);
+              "
+            >
+              mini = u64_from_be(hash[0..8]) >> (64 - N)
+              <span class="comment"
+                >// desloca para manter só os N bits mais significativos</span
+              >
+            </div>
+            <div style="height: 12px"></div>
+            <p>Para N = 4 bits:</p>
+            <div
+              style="
+                background: var(--panel);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                padding: 14px 16px;
+                margin-top: 10px;
+                font-family: &quot;Share Tech Mono&quot;, monospace;
+                font-size: 0.78rem;
+                line-height: 2;
+              "
+            >
+              <span style="color: var(--muted)">hash[0]: </span
+              ><span style="color: var(--accent1)">1010</span
+              ><span style="color: var(--muted)">1100 01011111...</span><br />
+              <span style="color: var(--muted)">>> 60: </span
+              ><span style="color: var(--accent1)">1010</span><br />
+              <span style="color: var(--muted)">mini_hash = 0x</span
+              ><span style="color: var(--accent2)">A</span>
+            </div>
+          </div>
+          <div>
+            <div class="content-block">
+              <h2 style="color: var(--accent2)">Saída Formatada</h2>
+              <p>
+                A função
+                <code
+                  style="
+                    color: var(--accent1);
+                    font-family: &quot;Share Tech Mono&quot;, monospace;
+                  "
+                  >imprimir_resultado()</code
+                >
+                exibe apenas a fatia colidida, não o hash completo:
+              </p>
+            </div>
+            <div style="height: 12px"></div>
+            <div class="code-panel">
+              <div class="code-header">
+                <span class="dot dot-r"></span><span class="dot dot-y"></span
+                ><span class="dot dot-g"></span>
+                <span class="code-filename">stdout · exemplo 48 bits</span>
+              </div>
+              <div class="code-body">
+                <pre><span style="color:var(--accent1)">========================================
+COLISÃO ENCONTRADA EM 48 BITS (12 HEX)
+</span><span style="color:var(--muted)">Fatia Alvo: </span><span style="color:var(--accent2)">a3f7c1b90d4e</span>
+<span style="color:var(--muted)">----------------------------------------
+Entrada A:  </span>4d8b1a2c...
+<span style="color:var(--muted)">Entrada B:  </span>9f3e5d7c...
+<span style="color:var(--muted)">Hash A:     </span>a3f7c1b9<span style="color:var(--muted)">...</span>
+<span style="color:var(--muted)">Hash B:     </span>a3f7c1b9<span style="color:var(--muted)">...</span>
+<span style="color:var(--muted)">----------------------------------------
+Tentativas:        </span><span style="color:var(--green)">18.421.633</span>
+<span style="color:var(--muted)">Tempo:             </span>3.2s
+<span style="color:var(--muted)">Memória Inicial:   </span>4 MB
+<span style="color:var(--muted)">Memória Final:     </span>47 MB</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 7 – Dependências & main (P2) -->
+      <div class="slide" data-presenter="2">
+        <div class="section-tag">Pessoa 2 · Dependências & Entry Point</div>
+        <div class="two-col" style="align-items: start">
+          <div>
+            <div class="content-block">
+              <h2 style="color: var(--accent2)">Crates Utilizadas</h2>
+            </div>
+            <div
+              style="
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                margin-top: 16px;
+              "
+            >
+              <div
+                style="
+                  background: var(--panel);
+                  border: 1px solid var(--border);
+                  border-radius: 8px;
+                  padding: 14px 18px;
+                  display: flex;
+                  align-items: center;
+                  gap: 14px;
+                "
+              >
+                <div
+                  style="
+                    font-family: &quot;Share Tech Mono&quot;, monospace;
+                    color: var(--accent1);
+                    min-width: 120px;
+                  "
+                >
+                  sha2
+                </div>
+                <div style="font-size: 0.85rem; color: var(--muted)">
+                  SHA-256 puro em Rust, sem dependência de OpenSSL
+                </div>
+              </div>
+              <div
+                style="
+                  background: var(--panel);
+                  border: 1px solid var(--border);
+                  border-radius: 8px;
+                  padding: 14px 18px;
+                  display: flex;
+                  align-items: center;
+                  gap: 14px;
+                "
+              >
+                <div
+                  style="
+                    font-family: &quot;Share Tech Mono&quot;, monospace;
+                    color: var(--accent1);
+                    min-width: 120px;
+                  "
+                >
+                  getrandom
+                </div>
+                <div style="font-size: 0.85rem; color: var(--muted)">
+                  Bytes aleatórios via syscall do SO (urandom/BCryptGenRandom)
+                </div>
+              </div>
+              <div
+                style="
+                  background: var(--panel);
+                  border: 1px solid var(--border);
+                  border-radius: 8px;
+                  padding: 14px 18px;
+                  display: flex;
+                  align-items: center;
+                  gap: 14px;
+                "
+              >
+                <div
+                  style="
+                    font-family: &quot;Share Tech Mono&quot;, monospace;
+                    color: var(--accent1);
+                    min-width: 120px;
+                  "
+                >
+                  hex
+                </div>
+                <div style="font-size: 0.85rem; color: var(--muted)">
+                  Codifica bytes como string hexadecimal para a entrada
+                </div>
+              </div>
+              <div
+                style="
+                  background: var(--panel);
+                  border: 1px solid var(--border);
+                  border-radius: 8px;
+                  padding: 14px 18px;
+                  display: flex;
+                  align-items: center;
+                  gap: 14px;
+                "
+              >
+                <div
+                  style="
+                    font-family: &quot;Share Tech Mono&quot;, monospace;
+                    color: var(--accent1);
+                    min-width: 120px;
+                  "
+                >
+                  memory_stats
+                </div>
+                <div style="font-size: 0.85rem; color: var(--muted)">
+                  RSS multiplataforma sem bindings nativas ao OS
+                </div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="content-block">
+              <h2 style="color: var(--accent2)">Entry Point</h2>
+              <p>
+                O
+                <code
+                  style="
+                    color: var(--accent1);
+                    font-family: &quot;Share Tech Mono&quot;, monospace;
+                  "
+                  >main()</code
+                >
+                chama diretamente
+                <code
+                  style="
+                    color: var(--accent1);
+                    font-family: &quot;Share Tech Mono&quot;, monospace;
+                  "
+                  >buscar_colisao(48)</code
+                >. Fácil de ajustar para outros tamanhos de bits:
+              </p>
+            </div>
+            <div class="code-panel" style="margin-top: 14px">
+              <div class="code-header">
+                <span class="dot dot-r"></span><span class="dot dot-y"></span
+                ><span class="dot dot-g"></span>
+                <span class="code-filename">main.rs · main</span>
+              </div>
+              <div class="code-body">
+                <pre><span class="kw">fn</span> <span class="fn">main</span>() {
+  <span class="cm">// 16 bits → milissegundos</span>
+  <span class="cm">// 32 bits → segundos</span>
+  <span class="cm">// 48 bits → minutos</span>
+  <span class="cm">// 64 bits → horas/dias</span>
+  <span class="fn">buscar_colisao</span>(<span class="nm">48</span>);
+}</pre>
+              </div>
+            </div>
+            <div
+              class="formula-box"
+              style="
+                margin-top: 16px;
+                border-color: var(--accent2);
+                color: var(--accent2);
+              "
+            >
+              cargo run --release
+              <span class="comment"
+                >// --release é ESSENCIAL: 10-50x mais rápido</span
+              >
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 8 – Conclusão -->
+      <div class="slide slide-title" data-presenter="2">
+        <div
+          class="section-tag"
+          style="justify-content: center; margin-bottom: 20px"
+        >
+          Conclusão
+        </div>
+        <div class="big-title">Resumo <span class="hl">Final</span></div>
+        <div style="height: 28px"></div>
+        <div
+          style="
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            max-width: 700px;
+            margin: 0 auto;
+            text-align: left;
+          "
+        >
+          <div
+            style="
+              background: var(--panel);
+              border: 1px solid rgba(0, 229, 255, 0.2);
+              border-radius: 10px;
+              padding: 18px;
+            "
+          >
+            <div
+              style="
+                color: var(--accent1);
+                font-family: &quot;Share Tech Mono&quot;, monospace;
+                font-size: 0.75rem;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+              "
+            >
+              Pessoa 1 apresentou
+            </div>
+            <ul
+              style="
+                font-size: 0.85rem;
+                color: var(--text);
+                padding-left: 16px;
+                line-height: 1.9;
+              "
+            >
+              <li>SHA-256 e propriedades</li>
+              <li>Struct ColisaoResult</li>
+              <li>Leitura de memória (RSS)</li>
+              <li>Paradoxo do Aniversário</li>
+            </ul>
+          </div>
+          <div
+            style="
+              background: var(--panel);
+              border: 1px solid rgba(255, 107, 53, 0.2);
+              border-radius: 10px;
+              padding: 18px;
+            "
+          >
+            <div
+              style="
+                color: var(--accent2);
+                font-family: &quot;Share Tech Mono&quot;, monospace;
+                font-size: 0.75rem;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+              "
+            >
+              Pessoa 2 apresentou
+            </div>
+            <ul
+              style="
+                font-size: 0.85rem;
+                color: var(--text);
+                padding-left: 16px;
+                line-height: 1.9;
+              "
+            >
+              <li>Loop de busca (4 etapas)</li>
+              <li>Extração de mini-hash</li>
+              <li>Saída formatada</li>
+              <li>Dependências & main()</li>
+            </ul>
+          </div>
+        </div>
+        <div style="height: 24px"></div>
+        <div style="font-size: 0.9rem; color: var(--muted); text-align: center">
+          A colisão em N bits exige ~2^(N/2) operações — demostração prática do
+          paradoxo do aniversário
+        </div>
+      </div>
+    </div>
+    <!-- /stage -->
+
+    <nav>
+      <button class="nav-btn" id="prevBtn" onclick="navigate(-1)" disabled>
+        ← ANTERIOR
+      </button>
+      <div class="progress-bar" id="progressBar"></div>
+      <button class="nav-btn" id="nextBtn" onclick="navigate(1)">
+        PRÓXIMO →
+      </button>
+    </nav>
+
+    <script>
+      const slides = document.querySelectorAll(".slide");
+      const total = slides.length;
+      let current = 0;
+
+      document.getElementById("slideTotal").textContent = total;
+
+      // Build progress dots
+      const bar = document.getElementById("progressBar");
+      for (let i = 0; i < total; i++) {
+        const d = document.createElement("div");
+        d.className = "prog-dot" + (i === 0 ? " active" : "");
+        d.onclick = () => goTo(i);
+        bar.appendChild(d);
+      }
+
+      function updatePresenter(idx) {
+        const p = slides[idx].dataset.presenter;
+        const badge = document.getElementById("presenterBadge");
+        const name = document.getElementById("presenterName");
+        badge.className =
+          "presenter-badge " + (p === "1" ? "badge-p1" : "badge-p2");
+        name.textContent = "Pessoa " + p;
+      }
+
+      function goTo(next) {
+        if (next < 0 || next >= total) return;
+        slides[current].classList.remove("active");
+        slides[current].classList.add("exit");
+        setTimeout(() => slides[current].classList.remove("exit"), 450);
+        current = next;
+        slides[current].classList.add("active");
+
+        document.getElementById("slideNum").textContent = current + 1;
+        document.getElementById("prevBtn").disabled = current === 0;
+        document.getElementById("nextBtn").disabled = current === total - 1;
+
+        document.querySelectorAll(".prog-dot").forEach((d, i) => {
+          d.className =
+            "prog-dot" +
+            (i < current ? " done" : i === current ? " active" : "");
+        });
+
+        updatePresenter(current);
+      }
+
+      function navigate(dir) {
+        goTo(current + dir);
+      }
+
+      updatePresenter(0);
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowRight" || e.key === " ") navigate(1);
+        if (e.key === "ArrowLeft") navigate(-1);
+      });
+    </script>
+  </body>
+</html>
